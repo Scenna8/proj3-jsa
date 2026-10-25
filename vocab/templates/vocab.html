@@ -80,34 +80,72 @@
 <br />
 <div class="row">
   <div class="col-xs-6 text-center">
-  <form id="entry" method="POST" action="/_check">
+  <form id="entry">
     <label for="attempt">Word:</label>
     <input id="attempt" name="attempt" type="text" width="15"
       autocomplete="off"  autofocus />
-    <input type="submit" name="try" />
   </form>
 </div></div>
 
 <br />
 
-{% if session.matches|length is not equalto 0  %}
+<!-- Filled in by JavaScript as matches are found -->
+<div id="found" {% if not session.matches %}style="display: none;"{% endif %}>
 <h2>You found </h2>
 <p id="results">
   {% for match in session.matches %}
-  {{ match }} 
+  {{ match }}
   {% endfor %}
 </p>
-{% endif %}
+</div>
 
+<!-- Mismatch, already found, etc., inserted by JavaScript -->
+<p id="message" class="message"> </p>
 
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <!-- Mismatch, already found, etc. "flashed" from Python -->
-    {% for message in messages %}
-      <p class="message">{{ message }}</p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
+<script>
+
+// Pressing Enter submits the form; instead of a normal submission,
+// check the word through Ajax and also report if it isn't on the list.
+$("#entry").submit( function(event) {
+   event.preventDefault();
+   checkWord(true);
+  });
+
+// On each keystroke, send the current contents of the input
+// field to the server, which tells us whether it is a new match.
+// We use 'keyup' because the input field has been updated by then.
+// Non-character keys like shift also trigger it, but that just
+// re-checks the same text, which is harmless.  Enter is handled
+// by the submit handler above, so we skip it here.
+$("#attempt").keyup(function(event) {
+   if (event.which == 13) { return; }
+   checkWord(false);
+   });
+
+// Ask the server about the current contents of the input field.
+// 'final' is true when the user pressed Enter.
+function checkWord(final) {
+   var txt = $("#attempt").val();  // Current content of the input field
+
+   $.getJSON( "/_check", { text: txt, final: final },
+              function(data) {
+                var rslt = data.result;
+                if (rslt.solved) {
+                   window.location.href = rslt.success_url;
+                   return;
+                }
+                if (rslt.new_match) {
+                   $("#results").text(rslt.matches.join(" "));
+                   $("#found").show();
+                   $("#attempt").val("");
+                }
+                $("#message").text(rslt.message);
+               }
+           ).fail(function() {
+                $("#message").text("Can't reach the server; is it running?");
+           });
+}
+</script>
 
 
 

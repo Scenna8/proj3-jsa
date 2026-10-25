@@ -1,0 +1,6 @@
+*.ini
+*.pyc
+__pycache__/
+.vscode/
+,pypid
+.venv/
